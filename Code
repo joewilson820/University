@@ -1,0 +1,81 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+%matplotlib inline
+plt.rcParams.update({'font.size':16}) 
+plt.rcParams["figure.figsize"] = (12, 9)
+
+#Function Defining
+def period2freq(period): #turning a period into a frequency function
+    return 1.0 / period * 2.0 * np.pi
+
+def freq2period(freq): #turning a frequency into a period function
+    return 1.0 / freq * 2.0 * np.pi
+amp=0.082
+
+CO2_1 = pd.read_csv('C:/Joe Wilson/Semester 2 - Project/N2 80ml Measurements/1.csv')
+CO2_1.rename(columns={'Time t / s':'t','Voltage U_A1 / V':'V'}, inplace=True)
+CO2_1.set_index('t', inplace=True)
+df = CO2_1.iloc[730:1600]
+
+ax = df.plot(style='.')
+
+#Cos function with adjustable amplitude and frequency
+def cos_func(times, amplitude, frequency):
+    return amplitude * np.cos(frequency * times)
+
+#Check it works - here are some numbers from linspace
+times = np.linspace(0, 10)
+cos_func(times, amp, period2freq(0.005))
+
+#here are those numbers plotted
+fig, ax = plt.subplots()
+ax.plot(times, cos_func(times, amp, period2freq(0.05)))
+
+#here are our numbers with the linspace numbers
+fig, ax = plt.subplots()
+ax.plot(df.index, cos_func(df.index, amp, period2freq(0.05)))
+
+popt, pcov = curve_fit(cos_func,  # our function
+                       df.index,  # measured x values
+                       df.V,  # measured y values
+                       p0=(amp, period2freq(0.054)))  # the initial guess for the two parameters
+
+popt
+
+fig, ax = plt.subplots(1, 1)
+ax.plot(df.index, df.V, '.', label='Measured')
+ax.plot(df.index, cos_func(df.index, popt[0], popt[1]), label='Best Fit')
+ax.legend()
+
+This aint great I must say
+
+#Supposed frequency of oscillation
+freq2period(popt[1])
+
+Decaying exponential sinusoidal curve is of the form:
+
+<center> $\\theta=Ae^{-\\lambda t)cos \\omega t $</center> 
+
+#Simple plot of decaying exponential 
+fig, ax = plt.subplots()
+t = np.linspace(0, 2, num=100)
+ax.plot(t, np.exp(-1.5 * t));
+
+def decaying_sinusoid(t, a, lam, w): # function for a decaying sinusoidal curve
+    return a * np.exp(lam * t) * (lam*np.cos(w * t) + np.sin(w * t))
+
+popt, pcov = curve_fit(decaying_sinusoid,
+                       df.index,
+                       df.V,
+                       p0=(amp, -0.0000000000005, period2freq(0.0515845)))
+
+fig, ax = plt.subplots(1, 1)
+ax.plot(df.index, df, '.', label='Measured')
+ax.plot(df.index, decaying_sinusoid(df.index, popt[0], popt[1], popt[2]), label='Best Fit');
+
+freq2period(popt[2])
+
+
